@@ -17,7 +17,6 @@
 # additional variables. See `parse_constraints` for details.
 
 struct ConstraintBounds{T}
-    nx::Int            # Number of variables
     nc::Int            # Number of linear/nonlinear constraints supplied by user
     # Box-constraints on variables (i.e., directly on x)
     eqx::Vector{Int}   # index-vector of equality-constrained x (not actually variable...)
@@ -37,26 +36,18 @@ function ConstraintBounds(lx, ux, lc, uc)
 end
 function _cb(lx::AbstractArray{Tx}, ux::AbstractArray{Tx}, lc::AbstractVector{Tc}, uc::AbstractVector{Tc}) where {Tx,Tc}
     T = promote_type(Tx, Tc)
-    ConstraintBounds{T}(length(lx), length(lc), parse_constraints(T, lx, ux)..., parse_constraints(T, lc, uc)...)
+    ConstraintBounds{T}(length(lc), parse_constraints(T, lx, ux)..., parse_constraints(T, lc, uc)...)
 end
 
 Base.eltype(::Type{ConstraintBounds{T}}) where T = T
 Base.eltype(cb::ConstraintBounds) = eltype(typeof(cb))
 
 Base.convert(::Type{ConstraintBounds{T}}, cb::ConstraintBounds{S}) where {T,S} =
-    ConstraintBounds(cb.nx, cb.nc, cb.eqx, convert(Vector{T}, cb.valx),
+    ConstraintBounds(cb.nc, cb.eqx, convert(Vector{T}, cb.valx),
                      cb.ineqx, cb.σx, convert(Vector{T}, cb.bx),
                      cb.eqc, convert(Vector{T}, cb.valc), cb.ineqc,
                      cb.σc, convert(Vector{T}, cb.bc))
 
-
-"""
-
-   nvariables(bounds) 
-
-The number of variables in the problem.
-"""
-nvariables(cb::ConstraintBounds) = cb.nx
 
 """
     nconstraints(bounds) -> nc
@@ -181,7 +172,7 @@ struct TwiceDifferentiableConstraints{F,J,H,T,TJ} <: AbstractConstraints
 end
 
 function TwiceDifferentiableConstraints(c!, jacobian!, h!, bounds;
-            J=zeros(eltype(bounds), nconstraints(bounds), nvariables(bounds)))
+            J=nothing)
         TwiceDifferentiableConstraints(c!, jacobian!, h!, bounds, J)
 end
 
@@ -200,10 +191,10 @@ Construct twice differentiable constraints.
 - `ux` upper bounds on the x variables
 - `lc` lower bounds on the constraints
 - `uc` upper bounds on the constraints
-- `J` storage for the Jacobian. Defaults to a Matrix, but could be e.g. a SparseMatrix
+- `J` storage for the Jacobian. Defaults to a Matrix, but could be e.g. a SparseMatrix.
 """
 function TwiceDifferentiableConstraints(c!, jacobian!, h!, lx, ux, lc, uc;
-    J=zeros(eltype(lx), length(lc), length(lx)) )
+    J=zeros(eltype(lc), length(lc), length(lx)) )
     b = ConstraintBounds(lx, ux, lc, uc)
     TwiceDifferentiableConstraints(c!, jacobian!, h!, b, J)
 end

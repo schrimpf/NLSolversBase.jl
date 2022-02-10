@@ -167,6 +167,28 @@
                 fill!(hess_result,zero(T))
             end
         end
+        
+        @testset "sparse Jacobian and Hessian" begin
+            prob = MVP.ConstrainedProblems.examples["HS39"]
+            cbd = prob.constraintdata
+            nc = length(cbd.lc)
+            nx = length(prob.initial_x)            
+            odc = TwiceDifferentiableConstraints(cbd.c!, cbd.jacobian!, cbd.h!,
+                                            cbd.lx, cbd.ux, cbd.lc, cbd.uc, 
+                                            J=sparse(zeros(nc, nx)))            
+            H = sparse(zeros(nx,nx))
+
+            λ = rand(nc)
+            J = copy(odc.J)
+            x = prob.initial_x
+            odc.jacobian!(J,x)
+            @test issparse(J)
+            @test nnz(J) < length(J)
+            odc.h!(H,x,λ)
+            @test issparse(H)
+            @test nnz(H) < length(H)           
+        end
+
     end
 end
 
